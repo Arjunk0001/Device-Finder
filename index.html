@@ -14,24 +14,18 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
         .container {
+            max-width: 600px;
+            margin: 0 auto;
             background: white;
             border-radius: 20px;
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
+            padding: 30px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        h2 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        input, textarea, select {
+        h2 { color: #333; margin-bottom: 10px; }
+        input, textarea {
             width: 100%;
             padding: 12px;
             margin: 10px 0;
@@ -51,14 +45,11 @@
             margin-top: 10px;
         }
         .link-box {
-            margin-top: 30px;
+            margin-top: 20px;
             padding: 20px;
             background: #f8f9fa;
             border-radius: 10px;
             display: none;
-        }
-        .link-box.show {
-            display: block;
         }
         .tracking-link {
             background: white;
@@ -74,28 +65,34 @@
             margin: 5px 0;
             border-radius: 5px;
             cursor: pointer;
+            transition: background 0.2s;
         }
+        .device-item:hover { background: #dee2e6; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>🔐 Lost Phone Tracker</h2>
-        <p>Generate link - No permission needed!</p>
+        <p style="color:#666; margin-bottom:20px;">Generate tracking link for your lost device</p>
         
-        <input type="text" id="deviceName" placeholder="Device Name" required>
-        <textarea id="contactInfo" rows="3" placeholder="Your WhatsApp/Phone" required></textarea>
+        <input type="text" id="deviceName" placeholder="Device Name (e.g., iPhone 13)" required>
+        <textarea id="contactInfo" rows="3" placeholder="Your WhatsApp Number (with country code)" required></textarea>
+        <input type="text" id="reward" placeholder="Reward Amount (e.g., ₹2000)">
         
-        <button onclick="generateLink()">🚀 Generate Link</button>
+        <button onclick="generateLink()">🚀 Generate Tracking Link</button>
         
         <div class="link-box" id="linkBox">
-            <h3>Share this link:</h3>
+            <h3>📎 Share this link:</h3>
             <div class="tracking-link" id="trackingLink"></div>
             <button onclick="copyLink()">📋 Copy Link</button>
-            <button onclick="sendWhatsApp()">💬 Send WhatsApp</button>
+            <button onclick="sendWhatsApp()">💬 Send via WhatsApp</button>
+            <p style="font-size:12px; color:#666; margin-top:10px;">
+                ⚠️ When someone clicks this link, they'll be asked for location once
+            </p>
         </div>
 
         <div style="margin-top: 30px;">
-            <h3>📱 Your Devices</h3>
+            <h3>📱 Your Tracked Devices</h3>
             <div id="savedDevices"></div>
         </div>
     </div>
@@ -105,13 +102,13 @@
             const devices = JSON.parse(localStorage.getItem('trackedDevices') || '[]');
             const container = document.getElementById('savedDevices');
             if (devices.length === 0) {
-                container.innerHTML = '<p style="color:#666;">No devices yet</p>';
+                container.innerHTML = '<p style="color:#666;">No devices tracked yet</p>';
                 return;
             }
             container.innerHTML = devices.map(device => `
                 <div class="device-item" onclick="window.location.href='dashboard.html?id=${device.id}'">
                     <strong>${device.deviceName}</strong><br>
-                    <small>Clicks: ${device.clicks || 0} | ${new Date(device.createdAt).toLocaleString()}</small>
+                    <small>Clicks: ${device.clicks || 0} | Last: ${device.lastCapture ? new Date(device.lastCapture).toLocaleString() : 'Never'}</small>
                 </div>
             `).join('');
         }
@@ -119,32 +116,37 @@
         function generateLink() {
             const deviceName = document.getElementById('deviceName').value;
             const contactInfo = document.getElementById('contactInfo').value;
+            const reward = document.getElementById('reward').value;
             
             if (!deviceName || !contactInfo) {
-                alert('Please fill all fields');
+                alert('Please fill device name and contact info');
                 return;
             }
             
             const id = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-            const link = `${window.location.origin}${window.location.pathname.replace('index.html', '')}track.html?id=${id}`;
+            const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+            const link = `${baseUrl}track.html?id=${id}`;
             
             const devices = JSON.parse(localStorage.getItem('trackedDevices') || '[]');
             devices.push({
                 id: id,
                 deviceName: deviceName,
                 contactInfo: contactInfo,
+                reward: reward,
                 createdAt: Date.now(),
                 clicks: 0,
+                lastCapture: null,
                 data: []
             });
             localStorage.setItem('trackedDevices', JSON.stringify(devices));
             
             document.getElementById('trackingLink').innerHTML = link;
-            document.getElementById('linkBox').classList.add('show');
+            document.getElementById('linkBox').style.display = 'block';
             loadDevices();
             
             document.getElementById('deviceName').value = '';
             document.getElementById('contactInfo').value = '';
+            document.getElementById('reward').value = '';
         }
         
         function copyLink() {
@@ -155,10 +157,12 @@
         
         function sendWhatsApp() {
             const link = document.getElementById('trackingLink').innerText;
-            window.open(`https://wa.me/?text=🔴%20My%20phone%20is%20lost!%20Click%20this%20link%20to%20help:%20${encodeURIComponent(link)}`, '_blank');
+            const text = `🔴 HELP: My phone is lost! If you find this device, please click this link to help return it. Reward offered. ${link}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
         }
         
         loadDevices();
+        setInterval(loadDevices, 2000);
     </script>
 </body>
 </html>
