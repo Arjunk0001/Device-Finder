@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lost Phone Tracker - Generate Link</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .link-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        .link-box.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .tracking-link {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .copy-btn {
+            background: #28a745;
+            margin-top: 5px;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #856404;
+        }
+        .device-list {
+            margin-top: 20px;
+        }
+        .device-item {
+            background: #e9ecef;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .device-item:hover {
+            background: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Lost Phone Tracker</h2>
+        <div class="subtitle">Generate a tracking link for your lost device</div>
+        
+        <input type="text" id="deviceName" placeholder="Device Name (e.g., iPhone 13 Pro)" required>
+        <textarea id="contactInfo" rows="3" placeholder="Your contact info (WhatsApp/Phone/Email) - This will be shown to the finder" required></textarea>
+        <input type="text" id="reward" placeholder="Reward (Optional - e.g., $50 Reward)">
+        
+        <button onclick="generateLink()">🚀 Generate Tracking Link</button>
+        
+        <div class="link-box" id="linkBox">
+            <h3>📎 Share this link:</h3>
+            <div class="tracking-link" id="trackingLink"></div>
+            <button class="copy-btn" onclick="copyLink()">📋 Copy Link</button>
+            <button onclick="sendWhatsApp()">💬 Send via WhatsApp</button>
+            <div class="warning">
+                ⚠️ When someone clicks this link, their location will be captured automatically.
+                Share this link via SMS, WhatsApp, or social media.
+            </div>
+        </div>
+
+        <div class="device-list" id="deviceList">
+            <h3>📱 Your Tracked Devices</h3>
+            <div id="savedDevices"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load saved devices on page load
+        function loadDevices() {
+            const devices = JSON.parse(localStorage.getItem('trackedDevices') || '[]');
+            const container = document.getElementById('savedDevices');
+            if (devices.length === 0) {
+                container.innerHTML = '<p style="color:#666; font-size:14px;">No devices tracked yet</p>';
+                return;
+            }
+            container.innerHTML = devices.map(device => `
+                <div class="device-item" onclick="viewDevice('${device.id}')">
+                    <strong>${device.deviceName}</strong><br>
+                    <small>Created: ${new Date(device.createdAt).toLocaleString()}</small><br>
+                    <small>Clicks: ${device.clicks || 0}</small>
+                </div>
+            `).join('');
+        }
+
+        function generateLink() {
+            const deviceName = document.getElementById('deviceName').value;
+            const contactInfo = document.getElementById('contactInfo').value;
+            const reward = document.getElementById('reward').value;
+            
+            if (!deviceName || !contactInfo) {
+                alert('Please fill device name and contact info');
+                return;
+            }
+            
+            // Generate unique ID
+            const id = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            const link = `${window.location.origin}${window.location.pathname.replace('index.html', '')}track.html?id=${id}`;
+            
+            // Save to localStorage
+            const devices = JSON.parse(localStorage.getItem('trackedDevices') || '[]');
+            devices.push({
+                id: id,
+                deviceName: deviceName,
+                contactInfo: contactInfo,
+                reward: reward,
+                createdAt: Date.now(),
+                clicks: 0,
+                data: []
+            });
+            localStorage.setItem('trackedDevices', JSON.stringify(devices));
+            
+            // Display link
+            document.getElementById('trackingLink').innerHTML = link;
+            document.getElementById('linkBox').classList.add('show');
+            loadDevices();
+            
+            // Clear form
+            document.getElementById('deviceName').value = '';
+            document.getElementById('contactInfo').value = '';
+            document.getElementById('reward').value = '';
+        }
+        
+        function copyLink() {
+            const linkText = document.getElementById('trackingLink').innerText;
+            navigator.clipboard.writeText(linkText);
+            alert('Link copied to clipboard!');
+        }
+        
+        function sendWhatsApp() {
+            const link = document.getElementById('trackingLink').innerText;
+            const text = encodeURIComponent(`🔴 My phone is lost! If you find it, please click this link to help return it: ${link}`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+        
+        function viewDevice(deviceId) {
+            window.location.href = `dashboard.html?id=${deviceId}`;
+        }
+        
+        loadDevices();
+    </script>
+</body>
+</html>
